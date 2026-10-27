@@ -1,0 +1,15 @@
+{
+  "name": "atlas-lab-v3",
+  "version": "3.0.0",
+  "private": true,
+  "description": "Atlas: client capital, holder accounts, platform rules, stake planning, accumulators, withdrawals and shareholder profit distribution.",
+  "type": "module",
+  "engines": { "node": ">=22.13.0" },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning src/http/server.js",
+    "db:migrate": "node --disable-warning=ExperimentalWarning src/cli/migrate.js",
+    "db:seed": "node --disable-warning=ExperimentalWarning src/cli/seed.js",
+    "check": "node src/cli/check-syntax.js",
+    "test": "node --disable-warning=ExperimentalWarning --test --test-reporter=spec \"test/**/*.test.js\""
+  }
+}

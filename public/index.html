@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Atlas</title>
+  <link rel="stylesheet" href="/assets/styles.css">
+  <script type="module" src="/app/main.js"></script>
+</head>
+<body>
+  <div class="mobile-bar"><span class="brand">ATLAS</span><button id="menu-btn" type="button" aria-label="Open menu" aria-expanded="false">Menu</button></div>
+  <div class="shell hidden" id="shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">ATLAS</div>
+      <span class="staging" id="env-label"></span>
+      <nav class="nav" id="nav" aria-label="Main"></nav>
+      <div class="me" id="me"></div>
+    </aside>
+    <main class="main" id="view" tabindex="-1"></main>
+  </div>
+  <main class="login hidden" id="login">
+    <form class="card" id="login-form" novalidate>
+      <div class="brand">ATLAS</div>
+      <p class="muted">Capital, accounts and operations.</p>
+      <label for="l-email">Email</label><input id="l-email" name="email" type="email" autocomplete="username" required>
+      <label for="l-pass">Password</label><input id="l-pass" name="password" type="password" autocomplete="current-password" required>
+      <button class="primary" type="submit">Sign in</button>
+    </form>
+  </main>
+</body>
+</html>
