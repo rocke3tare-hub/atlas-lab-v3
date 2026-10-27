@@ -21,9 +21,11 @@ export function accountMoney(db, account) {
   if (account.kind !== 'platform') return { balance, available: balance, reserved: 0, pendingWithdrawals: 0, bonus: 0, freeBet: 0 };
   const reserved = db.get(`SELECT COALESCE(sum(stake), 0) AS v FROM bets WHERE account_id = :a AND status = 'reserved' AND stake_type = 'cash'`, { a: account.id }).v;
   const pendingWithdrawals = db.get(`SELECT COALESCE(sum(amount), 0) AS v FROM withdrawals WHERE platform_account_id = :a AND status IN ${OPEN_WITHDRAWAL}`, { a: account.id }).v;
+  // A voided bet never happened, so its stake was never really spent; the
+  // credit goes back to the pocket, same as a bet cancelled before placement.
   const pocket = kind => db.get(`SELECT
       COALESCE((SELECT sum(amount) FROM bonus_credits WHERE account_id = :a AND kind = :k), 0) -
-      COALESCE((SELECT sum(stake) FROM bets WHERE account_id = :a AND stake_type = :k AND status <> 'cancelled'), 0) -
+      COALESCE((SELECT sum(stake) FROM bets WHERE account_id = :a AND stake_type = :k AND status NOT IN ('cancelled', 'void')), 0) -
       COALESCE((SELECT sum(CASE WHEN :k = 'bonus' THEN bonus_stake ELSE free_bet_stake END) FROM mixes WHERE account_id = :a AND status <> 'draft'), 0) AS v`, { a: account.id, k: kind }).v;
   return { balance, available: balance - reserved - pendingWithdrawals, reserved, pendingWithdrawals, bonus: pocket('bonus'), freeBet: pocket('free_bet') };
 }
@@ -42,6 +44,10 @@ export function post(ctx, { clientId, kind, from = null, to = null, amountOut = 
   if (from && !fromAccount) throw notFound('Source account');
   if (to && !toAccount) throw notFound('Destination account');
   for (const a of [fromAccount, toAccount]) if (a && a.client_id !== clientId) throw invalid('Both accounts must belong to the same client.');
+  // A closed account is done. A reversal is the one exception (allowOverdraft
+  // alone is not, since stake and withdrawal postings use it too), so
+  // correcting a movement that touched a since-closed account still works.
+  if (kind !== 'reversal') for (const a of [fromAccount, toAccount]) if (a && a.status === 'closed') throw invalid(`${a.name} is closed.`);
   if (fromAccount && !allowOverdraft) {
     const available = accountMoney(ctx.db, fromAccount).available + extraAvailable;
     if (amountOut + fee > available) throw new AppError('INSUFFICIENT_FUNDS', `${fromAccount.name} has only ${(available / 10 ** CURRENCIES[fromAccount.currency].decimals).toLocaleString('en-US')} ${fromAccount.currency} available.`, 422);

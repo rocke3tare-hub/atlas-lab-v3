@@ -170,3 +170,53 @@ test('closing an operation requires all bets settled', async () => {
   fail(await admin.post(`/api/operations/${operationId}/events`, { name: 'Late', marketType: 'two_way' }), 422);
   void eventId;
 });
+
+// --- Regressions found on a manual audit of the Shareholders, Operations,
+// Mixes, Platforms and Money pages, after the v3 rebuild went live. ---
+
+test('bug: voiding or pushing a bonus/free-bet stake never pays real cash, and the credit returns to the pocket', async () => {
+  await owner.post('/api/bonuses', { accountId: daraX.id, kind: 'bonus', amount: '50' });
+  const before = await balance(daraX.id);
+  const op = ok(await admin.post('/api/operations', { clientId: northstar.id, name: 'Bonus void check' }), 201);
+  const event = ok(await admin.post(`/api/operations/${op.id}/events`, { name: 'A v B', marketType: 'three_way' }), 201).events[0];
+  const bet = ok(await admin.post(`/api/events/${event.id}/bets`, { accountId: daraX.id, outcome: 'team1_win', odds: '2.00', stake: '50', stakeType: 'bonus' }), 201).events[0].bets[0];
+  ok(await admin.post(`/api/bets/${bet.id}/place`));
+  ok(await admin.post(`/api/events/${event.id}/settle`, { result: 'void' }));
+  const after = await balance(daraX.id);
+  assert.equal(after.balance, before.balance, 'a void must not fabricate real cash for a bonus stake');
+  assert.equal(after.bonus, before.bonus, 'a void must return the bonus credit to the pocket');
+});
+
+test('bug: bets cannot be placed on a paused platform', async () => {
+  const platform = ok(await owner.get('/api/platforms')).find(p => p.id === daraX.platformId);
+  ok(await owner.patch(`/api/platforms/${platform.id}`, { name: platform.name, code: platform.code, currency: platform.currency, status: 'paused' }));
+  const op = ok(await admin.post('/api/operations', { clientId: northstar.id, name: 'Paused platform check' }), 201);
+  const event = ok(await admin.post(`/api/operations/${op.id}/events`, { name: 'A v B', marketType: 'three_way' }), 201).events[0];
+  fail(await admin.post(`/api/events/${event.id}/bets`, { accountId: daraX.id, outcome: 'team1_win', odds: '2.00', stake: '1' }), 422, 'VALIDATION_ERROR');
+  ok(await owner.patch(`/api/platforms/${platform.id}`, { name: platform.name, code: platform.code, currency: platform.currency, status: 'active' }));
+});
+
+test('bug: money cannot be posted into or out of a closed account', async () => {
+  const bankId = ok(await owner.post('/api/accounts', { holderId: dara.id, kind: 'bank', currency: 'EUR', code: 'NST-DA-CLOSE' }), 201).id;
+  ok(await owner.patch(`/api/accounts/${bankId}`, { status: 'closed' }));
+  fail(await owner.post('/api/movements', { kind: 'income', toAccountId: bankId, amount: '1' }), 422, 'VALIDATION_ERROR');
+  fail(await owner.post('/api/movements', { kind: 'transfer', fromAccountId: daraWallet.id, toAccountId: bankId, amount: '1', amountReceived: '1', kind: 'exchange' }), 422, 'VALIDATION_ERROR');
+});
+
+test('bug: assigning non-array client ids to an admin fails cleanly, not with a server error', async () => {
+  const users = ok(await owner.get('/api/users'));
+  const admins = users.find(u => u.role === 'admin');
+  fail(await owner.put(`/api/users/${admins.id}/clients`, { clientIds: 'not-an-array' }), 422, 'VALIDATION_ERROR');
+});
+
+test('bug: a Mix cannot be created or locked on a paused account', async () => {
+  ok(await owner.patch(`/api/accounts/${leylaX.id}`, { status: 'paused' }));
+  fail(await admin.post('/api/mixes', { accountId: leylaX.id, title: 'Paused account check', cashStake: '5' }), 422, 'VALIDATION_ERROR');
+  ok(await owner.patch(`/api/accounts/${leylaX.id}`, { status: 'active' }));
+  const mix = ok(await admin.post('/api/mixes', { accountId: leylaX.id, title: 'Lock after pause', cashStake: '5' }), 201);
+  await admin.post(`/api/mixes/${mix.id}/legs`, { event: 'A', market: 'M', selection: 'S', odds: '2', startsAt: '2026-11-09T10:00', settlesAt: '2026-11-09T12:00' });
+  await admin.post(`/api/mixes/${mix.id}/legs`, { event: 'B', market: 'M', selection: 'S', odds: '2', startsAt: '2026-11-09T13:00', settlesAt: '2026-11-09T15:00' });
+  ok(await owner.patch(`/api/accounts/${leylaX.id}`, { status: 'paused' }));
+  fail(await admin.post(`/api/mixes/${mix.id}/lock`, {}), 422, 'VALIDATION_ERROR');
+  ok(await owner.patch(`/api/accounts/${leylaX.id}`, { status: 'active' }));
+});

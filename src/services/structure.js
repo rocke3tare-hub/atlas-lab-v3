@@ -293,6 +293,7 @@ export function setAdminClients(ctx, userId, clientIds) {
   requireRole(ctx, 'owner');
   const user = ctx.db.get('SELECT * FROM users WHERE id = :id', { id: userId });
   if (!user || user.role !== 'admin') throw invalid('Client assignments apply to admins.');
+  if (!Array.isArray(clientIds)) throw invalid('Client list is not valid.', { field: 'clientIds' });
   ctx.db.run('DELETE FROM admin_clients WHERE user_id = :u', { u: userId });
   for (const c of new Set(clientIds.map(x => idField(x, 'Client')))) {
     if (!ctx.db.get('SELECT 1 FROM clients WHERE id = :id', { id: c })) throw notFound('Client');

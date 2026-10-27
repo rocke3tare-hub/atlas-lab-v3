@@ -70,12 +70,21 @@ function exposure(event, bets) {
   return Object.entries(byCurrency).map(([currency, r]) => ({ currency, stake: r.stake, scenarios: scenarios.map(s => ({ scenario: s, grossReturn: r.returns[s], profit: r.returns[s] - r.stake })) }));
 }
 
-/** Integer payout of one bet for a match result (minor units). */
+/**
+ * Integer payout of one bet for a match result (minor units).
+ * Only a cash stake is ever real money taken from the account's ledger
+ * (placeBet posts a movement only for stake_type 'cash'). So a void or a
+ * stake-returned push (DNB draw) must only hand cash BACK for a cash stake:
+ * crediting it for a bonus or free-bet stake would create money that was
+ * never actually debited. A genuine win still pays bonus stakes in full and
+ * free-bet stakes their winnings only, since v1's winnings-to-cash rule
+ * covers real payouts, not refunds of a stake that was never real cash.
+ */
 export function payoutFor(bet, result) {
-  if (result === 'void') return bet.stake_type === 'free_bet' ? 0 : bet.stake;
+  if (result === 'void') return bet.stake_type === 'cash' ? bet.stake : 0;
   const factor = OUTCOME_TYPES[bet.outcome].pays(bet.odds / 1000)[result] || 0;
   if (factor === 0) return 0;
-  if (factor === 1) return bet.stake_type === 'free_bet' ? 0 : bet.stake; // stake returned (DNB draw)
+  if (factor === 1) return bet.stake_type === 'cash' ? bet.stake : 0; // stake returned (DNB draw)
   const gross = Math.round((bet.stake * Math.round(factor * 1000)) / 1000);
   return bet.stake_type === 'free_bet' ? gross - bet.stake : gross;
 }
@@ -155,6 +164,8 @@ export function reserveBet(ctx, eventId, input) {
   if (event.result) throw invalid('This event is already settled.');
   const account = loadOwned(ctx, 'accounts', idField(input.accountId, 'Account'), 'Account');
   if (account.kind !== 'platform' || account.client_id !== op.client_id) throw invalid('Choose a platform account of this operation’s client.');
+  const platform = ctx.db.get('SELECT status FROM platforms WHERE id = :id', { id: account.platform_id });
+  if (platform?.status !== 'active') throw invalid('This platform is not active.');
   const outcome = oneOf(input.outcome, Object.keys(OUTCOME_TYPES), 'Outcome');
   if (OUTCOME_TYPES[outcome].threeWayOnly && event.market_type === 'two_way') throw invalid('That outcome needs a three-outcome market.');
   const odds = parseOdds(input.odds);

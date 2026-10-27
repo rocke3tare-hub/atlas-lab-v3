@@ -46,6 +46,7 @@ export function createMix(ctx, input) {
   requireOperator(ctx);
   const account = loadOwned(ctx, 'accounts', idField(input.accountId, 'Platform account'), 'Account');
   if (account.kind !== 'platform') throw invalid('A Mix is placed on a platform account.');
+  if (account.status !== 'active') throw invalid('This account is not active.');
   const c = account.currency;
   const stakes = { cash: toMinor(input.cashStake || 0, c, 'Cash stake'), bonus: toMinor(input.bonusStake || 0, c, 'Bonus stake'), free: toMinor(input.freeBetStake || 0, c, 'Free-bet stake') };
   const mix = wrap(() => Mix.createMix({ cashStake: fromMinor(stakes.cash, c), bonusStake: fromMinor(stakes.bonus, c), freeBetStake: fromMinor(stakes.free, c), minimumGapMinutes: Number(input.minimumGapMinutes || 15), recommendedGapMinutes: Number(input.recommendedGapMinutes || 30) }));
@@ -76,6 +77,7 @@ export function lockMix(ctx, mixId, input = {}) {
   requireOperator(ctx);
   const row = load(ctx, mixId);
   const account = ctx.db.get('SELECT * FROM accounts WHERE id = :id', { id: row.account_id });
+  if (account.status !== 'active') throw invalid('This account is not active.');
   const overrideReason = text(input.overrideReason, 'Override reason', { max: 300 }) || '';
   if (overrideReason && ctx.actor.role !== 'owner') throw new AppError('OWNER_APPROVAL_REQUIRED', 'Only the owner can override the timing check.', 403);
   const mix = wrap(() => Mix.lockMix(parseJson(row.data), { overrideReason }));
