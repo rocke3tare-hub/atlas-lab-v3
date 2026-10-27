@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, $, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, $, $$ } from '../../assets/ui.js';
 import { fmt, pill, options, ctx, isOwner, canOperate, toInput, today } from '../common.js';
 
 const cur = () => ctx.me.currencies.map(c => ({ value: c, label: c }));
@@ -42,7 +42,7 @@ export async function render(target, app) {
       <div><label for="on">Invested on</label><input id="on" name="investedOn" type="date" value="${today()}"></div>
       <div class="full"><label for="st">Status</label><select id="st" name="status">${options([{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused (excluded from distribution)' }], c.shareholder_status || 'active')}</select></div></form>`,
       footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/clients/${c.id}/shareholder`, { method: 'PUT', body: data }); done('Shareholder saved.'); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/clients/${c.id}/shareholder`, { method: 'PUT', body: data }); done('Shareholder saved.'); });
   }));
   $('#new-holder', target)?.addEventListener('click', () => holderForm(null, done));
   $$('[data-edit-holder]', target).forEach(b => b.addEventListener('click', () => holderForm(holderOf(b.dataset.editHolder), done)));
@@ -56,7 +56,7 @@ export async function render(target, app) {
       <div><label for="n">Name (optional)</label><input id="n" name="name" maxlength="80"></div><div><label for="u">Username on platform</label><input id="u" name="username" maxlength="80"></div>
       <div class="full"><label for="ky">Identity verification</label><select id="ky" name="kycStatus">${options([{ value: 'verified', label: 'Verified' }, { value: 'pending', label: 'Pending' }, { value: 'rejected', label: 'Rejected' }], 'verified')}</select></div></form>`,
       footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Create</button>` });
-    onSubmit(d.querySelector('#f'), async data => { if (data.kind !== 'platform') delete data.platformId; await api('/api/accounts', { method: 'POST', body: { ...data, holderId: h.id } }); done('Account created.'); });
+    onSubmit(byId(d, 'f'), async data => { if (data.kind !== 'platform') delete data.platformId; await api('/api/accounts', { method: 'POST', body: { ...data, holderId: h.id } }); done('Account created.'); });
   }));
   $$('[data-edit-account]', target).forEach(b => b.addEventListener('click', () => {
     const { a } = find(b.dataset.editAccount);
@@ -66,7 +66,7 @@ export async function render(target, app) {
       <div><label for="s">Status</label><select id="s" name="status">${options([{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'closed', label: 'Closed' }], a.status)}</select></div>
       <div><label for="k">Verification</label><select id="k" name="kycStatus">${options([{ value: 'verified', label: 'Verified' }, { value: 'pending', label: 'Pending' }, { value: 'rejected', label: 'Rejected' }], a.kycStatus)}</select></div></form>`,
       footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/accounts/${a.id}`, { method: 'PATCH', body: data }); done('Account updated.'); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/accounts/${a.id}`, { method: 'PATCH', body: data }); done('Account updated.'); });
   }));
   $$('[data-fund]', target).forEach(b => b.addEventListener('click', () => {
     const { a, h } = find(b.dataset.fund);
@@ -76,7 +76,7 @@ export async function render(target, app) {
       <div><label for="am">Amount (${a.currency})</label><input id="am" name="amount" inputmode="decimal" required></div><div><label for="fe">Fee</label><input id="fe" name="fee" inputmode="decimal" value="0"></div>
       <div><label for="d">Date</label><input id="d" name="occurredOn" type="date" value="${today()}"></div><div><label for="r">Reference</label><input id="r" name="reference"></div></form>`,
       footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Record funding</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api('/api/fundings', { method: 'POST', body: { ...data, platformAccountId: a.id } }); done('Funding recorded.'); });
+    onSubmit(byId(d, 'f'), async data => { await api('/api/fundings', { method: 'POST', body: { ...data, platformAccountId: a.id } }); done('Funding recorded.'); });
   }));
   $$('[data-withdraw]', target).forEach(b => b.addEventListener('click', () => {
     const { a, h } = find(b.dataset.withdraw);
@@ -86,7 +86,7 @@ export async function render(target, app) {
       <div><label for="am">Amount</label><input id="am" name="amount" inputmode="decimal" required></div><div><label for="rq">Requested on</label><input id="rq" name="requestedOn" type="date" value="${today()}"></div>
       <div class="full"><label for="ex">Expected arrival</label><input id="ex" name="expectedOn" type="date"></div></form>`,
       footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Request withdrawal</button>` });
-    onSubmit(d.querySelector('#f'), async data => { if (!data.expectedOn) delete data.expectedOn; await api('/api/withdrawals', { method: 'POST', body: { ...data, platformAccountId: a.id } }); done('Withdrawal requested.'); });
+    onSubmit(byId(d, 'f'), async data => { if (!data.expectedOn) delete data.expectedOn; await api('/api/withdrawals', { method: 'POST', body: { ...data, platformAccountId: a.id } }); done('Withdrawal requested.'); });
   }));
   $$('[data-bonus]', target).forEach(b => b.addEventListener('click', () => {
     const { a } = find(b.dataset.bonus);
@@ -94,7 +94,7 @@ export async function render(target, app) {
       <div><label for="k">Type</label><select id="k" name="kind">${options([{ value: 'bonus', label: 'Bonus money' }, { value: 'free_bet', label: 'Free bet' }], 'free_bet')}</select></div>
       <div><label for="am">Amount (${a.currency})</label><input id="am" name="amount" inputmode="decimal" required></div><div class="full"><label for="n">Note</label><input id="n" name="note"></div></form>`,
       footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Credit</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api('/api/bonuses', { method: 'POST', body: { ...data, accountId: a.id } }); done('Bonus credited.'); });
+    onSubmit(byId(d, 'f'), async data => { await api('/api/bonuses', { method: 'POST', body: { ...data, accountId: a.id } }); done('Bonus credited.'); });
   }));
   $$('[data-move]', target).forEach(b => b.addEventListener('click', () => app.go(`money/new/${b.dataset.move}`)));
 }
@@ -104,7 +104,7 @@ function clientForm(c, done) {
     <div><label for="n">Name</label><input id="n" name="name" required value="${c?.name || ''}"></div><div><label for="c">Code</label><input id="c" name="code" required maxlength="16" value="${c?.code || ''}"></div>
     <div><label for="s">Status</label><select id="s" name="status">${options([{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }, { value: 'closed', label: 'Closed' }], c?.status || 'active')}</select></div>
     <div class="full"><label for="no">Note</label><textarea id="no" name="note">${c?.note || ''}</textarea></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save</button>` });
-  onSubmit(d.querySelector('#f'), async data => { await api(c ? `/api/clients/${c.id}` : '/api/clients', { method: c ? 'PATCH' : 'POST', body: data }); done('Client saved.'); });
+  onSubmit(byId(d, 'f'), async data => { await api(c ? `/api/clients/${c.id}` : '/api/clients', { method: c ? 'PATCH' : 'POST', body: data }); done('Client saved.'); });
 }
 
 function holderForm(existing, done) {
@@ -115,5 +115,5 @@ function holderForm(existing, done) {
     <div><label for="al">Allocated capital</label><input id="al" name="allocatedCapital" inputmode="decimal" value="${h ? toInput(h.allocated_capital, c.currency) : '0'}"></div>
     <div><label for="s">Status</label><select id="s" name="status">${options([{ value: 'active', label: 'Active' }, { value: 'paused', label: 'Paused' }], h?.status || 'active')}</select></div>
     <div class="full"><label for="no">Note</label><input id="no" name="note" value="${h?.note || ''}"></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save</button>` });
-  onSubmit(d.querySelector('#f'), async data => { await api(h ? `/api/holders/${h.id}` : '/api/holders', { method: h ? 'PATCH' : 'POST', body: { ...data, clientId: c?.id || data.clientId } }); done('Holder saved.'); });
+  onSubmit(byId(d, 'f'), async data => { await api(h ? `/api/holders/${h.id}` : '/api/holders', { method: h ? 'PATCH' : 'POST', body: { ...data, clientId: c?.id || data.clientId } }); done('Holder saved.'); });
 }

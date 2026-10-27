@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, $$ } from '../../assets/ui.js';
 import { fmt, pill, options, canOperate, today, toInput } from '../common.js';
 
 let status = 'open';
@@ -20,6 +20,6 @@ export async function render(target, app) {
       <div class="full"><label for="s">New status</label><select id="s" name="status">${options(NEXT[w.status].map(s => ({ value: s, label: s })), 'received')}</select></div>
       <div><label for="ra">Amount received</label><input id="ra" name="receivedAmount" inputmode="decimal" value="${toInput(w.amount, w.currency)}"></div><div><label for="ro">Received on</label><input id="ro" name="receivedOn" type="date" value="${today()}"></div>
       <div class="full"><label for="r">Reason / note</label><input id="r" name="reason" maxlength="300"></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/withdrawals/${w.id}`, { method: 'PATCH', body: data }); closeModal(); toast('Withdrawal updated.'); render(target, app); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/withdrawals/${w.id}`, { method: 'PATCH', body: data }); closeModal(); toast('Withdrawal updated.'); render(target, app); });
   }));
 }

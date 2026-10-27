@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, $, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, $, $$ } from '../../assets/ui.js';
 import { fmt, options, canOperate, isOwner, accountOptions, today } from '../common.js';
 
 const KINDS = [['transfer', 'Transfer between own accounts'], ['exchange', 'Currency exchange'], ['income', 'Income'], ['cost', 'Cost / expense'], ['capital', 'Capital paid in'], ['opening', 'Opening balance'], ['adjustment', 'Adjustment (owner)']];
@@ -21,7 +21,7 @@ export async function render(target, app, [mode, accountId]) {
   $('#filter', target).addEventListener('submit', e => { e.preventDefault(); const f = e.currentTarget; filter = { clientId: f.clientId.value, from: f.from.value, to: f.to.value }; render(target, app, []); });
   $$('[data-reverse]', target).forEach(b => b.addEventListener('click', () => {
     const d = modal({ title: 'Reverse movement', subtitle: 'Posts an equal and opposite line. The original stays in history.', body: html`<form id="f"><label for="r">Reason</label><input id="r" name="reason" required maxlength="300"></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="danger" type="submit">Reverse</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/movements/${b.dataset.reverse}/reverse`, { method: 'POST', body: data }); closeModal(); toast('Reversal posted.'); render(target, app, []); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/movements/${b.dataset.reverse}/reverse`, { method: 'POST', body: data }); closeModal(); toast('Reversal posted.'); render(target, app, []); });
   }));
   const open = (preset = null) => movementForm(tree, preset, () => { closeModal(); toast('Movement recorded.'); app.go('money'); render(target, app, []); });
   $('#new', target)?.addEventListener('click', () => open());
@@ -43,12 +43,12 @@ function movementForm(tree, preset, done) {
     <div><label for="d">Date</label><input id="d" name="occurredOn" type="date" value="${today()}"></div><div><label for="r">Reference</label><input id="r" name="reference" maxlength="80"></div>
     <div class="full"><label for="n">Note</label><input id="n" name="note" maxlength="300"></div></form>`,
     footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Record</button>` });
-  const form = d.querySelector('#f');
+  const form = byId(d, 'f');
   const sync = () => {
     const kind = form.kind.value;
     $$('[data-show]', d).forEach(n => { const on = n.dataset.show.split(' ').includes(kind); n.classList.toggle('hidden', !on); n.querySelectorAll('select, input').forEach(i => { i.disabled = !on; }); });
     const acct = (kind === 'adjustment' ? all.find(a => a.value === form.accountId.value) : ['income', 'capital', 'opening'].includes(kind) ? money.find(a => a.value === form.toAccountId.value) : money.find(a => a.value === form.fromAccountId.value))?.account;
-    d.querySelector('#am-cur').textContent = acct ? `(${acct.currency})` : '';
+    byId(d, 'am-cur').textContent = acct ? `(${acct.currency})` : '';
   };
   form.addEventListener('change', sync); sync();
   onSubmit(form, async data => { await api('/api/movements', { method: 'POST', body: data }); done(); });

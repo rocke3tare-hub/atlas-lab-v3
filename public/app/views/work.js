@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
 import { pill, options, ctx, canOperate } from '../common.js';
 
 let status = 'open';
@@ -21,15 +21,15 @@ export async function render(target, app) {
       <div><label for="c">Client</label><select id="c" name="clientId">${options(clients.map(c => ({ value: c.id, label: c.name })), '', { blank: 'All clients' })}</select></div><div><label for="d">Due</label><input id="d" name="dueOn" type="date"></div>
       <div><label for="p">Priority</label><select id="p" name="priority">${options([{ value: 'normal', label: 'Normal' }, { value: 'high', label: 'High' }, { value: 'low', label: 'Low' }], 'normal')}</select></div>
       <div class="full"><label for="de">Detail</label><textarea id="de" name="detail"></textarea></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Create</button>` });
-    onSubmit(d.querySelector('#f'), async data => { for (const k of ['clientId', 'dueOn']) if (!data[k]) delete data[k]; await api('/api/tasks', { method: 'POST', body: data }); closeModal(); render(target, app); });
+    onSubmit(byId(d, 'f'), async data => { for (const k of ['clientId', 'dueOn']) if (!data[k]) delete data[k]; await api('/api/tasks', { method: 'POST', body: data }); closeModal(); render(target, app); });
   });
   $('#ask', target).addEventListener('click', () => {
     const d = modal({ title: 'New question', body: html`<form id="f" class="form-grid"><div class="full"><label for="c">Client</label><select id="c" name="clientId">${options(clients.map(c => ({ value: c.id, label: c.name })), clients[0]?.id)}</select></div>
       <div class="full"><label for="s">Subject</label><input id="s" name="subject" required></div><div class="full"><label for="b">Message</label><textarea id="b" name="body" required></textarea></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Send</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api('/api/questions', { method: 'POST', body: data }); closeModal(); toast('Question sent.'); render(target, app); });
+    onSubmit(byId(d, 'f'), async data => { await api('/api/questions', { method: 'POST', body: data }); closeModal(); toast('Question sent.'); render(target, app); });
   });
   $$('[data-reply]', target).forEach(b => b.addEventListener('click', () => {
     const d = modal({ title: 'Reply', body: html`<form id="f"><label for="b">Message</label><textarea id="b" name="body" required></textarea>${canOperate() ? html`<label class="check"><input type="checkbox" name="close"> Close the conversation</label>` : ''}</form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Send</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/questions/${b.dataset.reply}/messages`, { method: 'POST', body: data }); closeModal(); render(target, app); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/questions/${b.dataset.reply}/messages`, { method: 'POST', body: data }); closeModal(); render(target, app); });
   }));
 }

@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
 import { fmt, signed, pill, options, isOwner, accountOptions, today } from '../common.js';
 
 let range = { from: '', to: '' };
@@ -27,7 +27,7 @@ export async function render(target, app) {
     const clients = tree.filter(x => x.shareholder_id);
     const d = modal({ title: 'Add capital', subtitle: 'The owner approves contributions before they count.', body: html`<form id="f" class="form-grid"><div class="full"><label for="c">Client</label><select id="c" name="clientId">${options(clients.map(x => ({ value: x.id, label: `${x.name} (${x.currency})` })), clients[0]?.id)}</select></div>
       <div><label for="a">Amount</label><input id="a" name="amount" inputmode="decimal" required></div><div><label for="n">Note</label><input id="n" name="note"></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Submit</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api('/api/contributions', { method: 'POST', body: data }); closeModal(); toast('Contribution submitted.'); render(target, app); });
+    onSubmit(byId(d, 'f'), async data => { await api('/api/contributions', { method: 'POST', body: data }); closeModal(); toast('Contribution submitted.'); render(target, app); });
   });
   $('#pay', target)?.addEventListener('click', () => {
     const sh = tree.filter(x => x.shareholder_id);
@@ -36,6 +36,6 @@ export async function render(target, app) {
       <div><label for="a">Amount</label><input id="a" name="amount" inputmode="decimal" required></div>
       <div><label for="f2">Pay from</label><select id="f2" name="fromAccountId">${options(accountOptions(tree, a => a.kind !== 'platform'), '', { blank: 'Paid outside Atlas' })}</select></div>
       <div class="full"><label for="n">Note</label><input id="n" name="note"></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Create</button>` });
-    onSubmit(d.querySelector('#f'), async data => { if (!data.fromAccountId) delete data.fromAccountId; await api('/api/payments', { method: 'POST', body: data }); closeModal(); toast('Payment recorded as pending.'); render(target, app); });
+    onSubmit(byId(d, 'f'), async data => { if (!data.fromAccountId) delete data.fromAccountId; await api('/api/payments', { method: 'POST', body: data }); closeModal(); toast('Payment recorded as pending.'); render(target, app); });
   });
 }

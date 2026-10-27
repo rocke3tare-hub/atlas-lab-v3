@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
 import { fmt, pill, options, ctx, isOwner, canOperate, checked } from '../common.js';
 
 export async function render(target, app) {
@@ -28,7 +28,7 @@ export async function render(target, app) {
   $('#new-platform', target)?.addEventListener('click', () => {
     const d = modal({ title: 'New platform', body: html`<form id="f" class="form-grid"><div><label for="n">Name</label><input id="n" name="name" required></div><div><label for="c">Code</label><input id="c" name="code" required maxlength="16"></div>
       <div class="full"><label for="cu">Currency</label><select id="cu" name="currency">${options(ctx.me.currencies.map(c => ({ value: c, label: c })), ctx.me.baseCurrency)}</select></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Create</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api('/api/platforms', { method: 'POST', body: data }); done('Platform created. Add its rules next.'); });
+    onSubmit(byId(d, 'f'), async data => { await api('/api/platforms', { method: 'POST', body: data }); done('Platform created. Add its rules next.'); });
   });
   $$('[data-rule]', target).forEach(b => b.addEventListener('click', () => {
     const p = platforms.find(x => x.id === b.dataset.rule); const r = p.rule;
@@ -42,14 +42,14 @@ export async function render(target, app) {
       <label class="check"><input type="checkbox" name="multipleAccountsPerOutcome" ${checked(r.multipleAccountsPerOutcome)}> Several accounts may back the same outcome</label>
       <label class="check"><input type="checkbox" name="manualApproval" ${checked(r.manualApproval)}> Every stake needs owner approval</label>
       <div class="full"><label for="no">Notes</label><textarea id="no" name="notes">${r.notes || ''}</textarea></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save new version</button>` });
-    onSubmit(d.querySelector('#f'), async data => { if (!data.effectiveFrom) delete data.effectiveFrom; await api(`/api/platforms/${p.id}/rules`, { method: 'POST', body: data }); done('Rule version saved.'); });
+    onSubmit(byId(d, 'f'), async data => { if (!data.effectiveFrom) delete data.effectiveFrom; await api(`/api/platforms/${p.id}/rules`, { method: 'POST', body: data }); done('Rule version saved.'); });
   }));
   $('#new-user', target)?.addEventListener('click', () => {
     const d = modal({ title: 'New user', subtitle: 'A one-time password is shown once.', body: html`<form id="f" class="form-grid">
       <div><label for="n">Name</label><input id="n" name="displayName" required></div><div><label for="e">Email</label><input id="e" name="email" type="email" required></div>
       <div><label for="r">Role</label><select id="r" name="role">${options([{ value: 'admin', label: 'Admin (operates assigned clients)' }, { value: 'shareholder', label: 'Shareholder (reads own client)' }, { value: 'owner', label: 'Owner (everything)' }], 'admin')}</select></div>
       <div><label for="c">Client (shareholders)</label><select id="c" name="clientId">${options(clients.map(c => ({ value: c.id, label: c.name })), '', { blank: '—' })}</select></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Create</button>` });
-    onSubmit(d.querySelector('#f'), async data => {
+    onSubmit(byId(d, 'f'), async data => {
       if (data.role !== 'shareholder') delete data.clientId;
       const r = await api('/api/users', { method: 'POST', body: data });
       closeModal();
@@ -60,7 +60,7 @@ export async function render(target, app) {
   $$('[data-assign]', target).forEach(b => b.addEventListener('click', () => {
     const u = users.find(x => x.id === b.dataset.assign);
     const d = modal({ title: `Clients for ${u.display_name}`, body: html`<form id="f">${clients.map(c => html`<label class="check"><input type="checkbox" name="c_${c.id}" ${checked(u.clients.includes(c.id))}> ${c.name}</label>`)}</form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Save</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/users/${u.id}/clients`, { method: 'PUT', body: { clientIds: Object.entries(data).filter(([, v]) => v).map(([k]) => k.slice(2)) } }); done('Access updated.'); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/users/${u.id}/clients`, { method: 'PUT', body: { clientIds: Object.entries(data).filter(([, v]) => v).map(([k]) => k.slice(2)) } }); done('Access updated.'); });
   }));
   $$('[data-toggle]', target).forEach(b => b.addEventListener('click', async () => {
     const u = users.find(x => x.id === b.dataset.toggle);

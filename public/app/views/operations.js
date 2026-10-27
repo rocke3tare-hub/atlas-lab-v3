@@ -1,4 +1,4 @@
-import { api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
+import { byId, api, html, mount, modal, closeModal, onSubmit, toast, showError, $, $$ } from '../../assets/ui.js';
 import { fmt, pill, options, ctx, accountOptions } from '../common.js';
 
 const money2 = v => Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -15,7 +15,7 @@ export async function render(target, app, [operationId]) {
   $('#new', target).addEventListener('click', () => {
     const d = modal({ title: 'New operation', body: html`<form id="f" class="form-grid"><div class="full"><label for="c">Client</label><select id="c" name="clientId">${options(tree.map(c => ({ value: c.id, label: c.name })), tree[0]?.id)}</select></div>
       <div class="full"><label for="n">Name</label><input id="n" name="name" required maxlength="100"></div><div class="full"><label for="no">Notes</label><textarea id="no" name="notes"></textarea></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Create</button>` });
-    onSubmit(d.querySelector('#f'), async data => { const op = await api('/api/operations', { method: 'POST', body: data }); closeModal(); app.go(`operations/${op.id}`); });
+    onSubmit(byId(d, 'f'), async data => { const op = await api('/api/operations', { method: 'POST', body: data }); closeModal(); app.go(`operations/${op.id}`); });
   });
 }
 
@@ -47,13 +47,13 @@ async function detail(target, app, id) {
   $('#add-event', target)?.addEventListener('click', () => {
     const d = modal({ title: 'Add event', body: html`<form id="f" class="form-grid"><div class="full"><label for="n">Event</label><input id="n" name="name" required placeholder="Team 1 v Team 2"></div>
       <div><label for="m">Market</label><select id="m" name="marketType">${options(Object.entries(ctx.me.markets).map(([value, m]) => ({ value, label: m.label })), 'three_way')}</select></div><div><label for="s">Starts</label><input id="s" name="startsAt" type="datetime-local"></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Add</button>` });
-    onSubmit(d.querySelector('#f'), async data => { if (!data.startsAt) delete data.startsAt; await api(`/api/operations/${id}/events`, { method: 'POST', body: data }); closeModal(); reload(); });
+    onSubmit(byId(d, 'f'), async data => { if (!data.startsAt) delete data.startsAt; await api(`/api/operations/${id}/events`, { method: 'POST', body: data }); closeModal(); reload(); });
   });
   $$('[data-settle]', target).forEach(b => b.addEventListener('click', () => {
     const e = op.events.find(x => x.id === b.dataset.settle);
     const results = [...ctx.me.markets[e.market_type].scenarios.map(s => ({ value: s, label: ctx.me.scenarios[s] })), { value: 'void', label: 'Void (all stakes returned)' }];
     const d = modal({ title: `Result · ${e.name}`, subtitle: 'Placed bets settle and payouts are posted. Unplaced reservations are cancelled.', body: html`<form id="f"><label for="r">Result</label><select id="r" name="result">${options(results, results[0].value)}</select></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Settle event</button>` });
-    onSubmit(d.querySelector('#f'), async data => { await api(`/api/events/${e.id}/settle`, { method: 'POST', body: data }); closeModal(); toast('Event settled.'); reload(); });
+    onSubmit(byId(d, 'f'), async data => { await api(`/api/events/${e.id}/settle`, { method: 'POST', body: data }); closeModal(); toast('Event settled.'); reload(); });
   }));
   $$('[data-plan]', target).forEach(b => b.addEventListener('click', () => planner(op.events.find(x => x.id === b.dataset.plan), reload)));
   $$('[data-bet]', target).forEach(b => b.addEventListener('click', () => betForm(op.events.find(x => x.id === b.dataset.bet), accounts, reload)));
@@ -76,10 +76,10 @@ function planner(event, reload) {
     if (e.target.closest('[data-remove]')) e.target.closest('.outcome-row').remove();
     if (e.target.closest('[data-add]')) $('.rows', d).insertAdjacentHTML('beforeend', String(row({ type: outs[0].value })));
   });
-  onSubmit(d.querySelector('#f'), async data => {
+  onSubmit(byId(d, 'f'), async data => {
     const outcomes = $$('.outcome-row', d).map(r => ({ type: r.querySelector('[name=type]').value, odds: r.querySelector('[name=odds]').value, stake: r.querySelector('[name=stake]').value, min: r.querySelector('[name=min]').value, max: r.querySelector('[name=max]').value, locked: r.querySelector('[name=locked]').checked }));
     const plan = await api(`/api/events/${event.id}/plan`, { method: 'POST', body: { mode: data.mode, currency: data.currency, capital: data.capital, targetReturn: data.targetReturn, increment: data.increment, outcomes } });
-    mount($('#plan-result', d), html`<div class="scenario-grid">${plan.input.map((o, i) => html`<div class="scenario"><small>${ctx.me.outcomes[o.type].label} @ ${o.odds}</small><b>${money2(plan.stakes[i])}</b></div>`)}</div>
+    mount(byId(d, 'plan-result'), html`<div class="scenario-grid">${plan.input.map((o, i) => html`<div class="scenario"><small>${ctx.me.outcomes[o.type].label} @ ${o.odds}</small><b>${money2(plan.stakes[i])}</b></div>`)}</div>
       <div class="scenario-grid">${plan.scenarios.map(s => html`<div class="scenario"><small>If ${s.label}</small><b class="${s.profit < -1e-9 ? 'neg' : 'pos'}">${money2(s.profit)}</b><small>returns ${money2(s.grossReturn)}</small></div>`)}</div>
       <p class="hint">Total ${money2(plan.totalStake)} ${plan.currency} · guaranteed return ${plan.guaranteedReturnPercent.toFixed(2)}%${plan.bookPercent ? ` · bookmaker margin ${(plan.bookPercent - 100).toFixed(2)}%` : ''}${plan.arbitrage ? ' · arbitrage: every result profits' : ''}</p>
       ${plan.warnings.map(w => html`<p class="notice">${w}</p>`)}`);
@@ -98,13 +98,13 @@ function betForm(event, accounts, reload) {
     <div class="full"><button type="button" id="check">Check accounts</button></div><div class="full" id="elig"></div>
     <div class="full"><label for="a">Account</label><select id="a" name="accountId">${options(accounts, '', { blank: 'Choose after checking…' })}</select></div>
     <div class="full"><label for="on">Owner approval note (platforms that require approval)</label><input id="on" name="overrideNote" maxlength="300"></div></form>`, footer: html`<button type="button" data-close>Cancel</button><button form="f" class="primary" type="submit">Reserve bet</button>` });
-  const form = d.querySelector('#f');
+  const form = byId(d, 'f');
   const fill = () => { const p = planned[form.outcome.value]; if (p) { form.odds.value = p.odds; form.stake.value = p.stake.toFixed(2); } };
   form.outcome.addEventListener('change', fill); fill();
-  d.querySelector('#check').addEventListener('click', async () => {
+  byId(d, 'check').addEventListener('click', async () => {
     try {
       const rows = await api(`/api/events/${event.id}/eligibility`, { method: 'POST', body: { outcome: form.outcome.value, odds: form.odds.value, stake: form.stake.value, stakeType: form.stakeType.value } });
-      mount($('#elig', d), html`<div class="list">${rows.map(r => html`<div class="list-item"><div><b>${r.name}</b> <small>${r.platform} · available ${fmt(r.available, r.currency)} · max stake ${fmt(r.maxStake, r.currency)}</small>${r.reasons.length ? html`<br><small>${r.reasons.join(' ')}</small>` : ''}</div>
+      mount(byId(d, 'elig'), html`<div class="list">${rows.map(r => html`<div class="list-item"><div><b>${r.name}</b> <small>${r.platform} · available ${fmt(r.available, r.currency)} · max stake ${fmt(r.maxStake, r.currency)}</small>${r.reasons.length ? html`<br><small>${r.reasons.join(' ')}</small>` : ''}</div>
         <div>${pill(r.status === 'ok' ? 'approved' : r.status === 'review' ? 'pending' : 'rejected', r.status === 'ok' ? 'eligible' : r.status)} ${r.status !== 'blocked' ? html`<button type="button" data-pick="${r.accountId}">Use</button>` : ''}</div></div>`)}</div>`);
       $$('[data-pick]', d).forEach(b => b.addEventListener('click', () => { form.accountId.value = b.dataset.pick; }));
     } catch (error) { showError(error); }

@@ -76,7 +76,28 @@ export function toast(message, kind = 'ok') {
 export const showError = error => toast(error?.message || 'Something went wrong.', 'error');
 
 let lastFocus = null;
+const onModalKey = event => { if (event.key === 'Escape' && document.querySelector('.modal-layer')) closeModal(); };
 /** Accessible modal. body/footer are html`` values. Returns the dialog element. */
+let modalSeq = 0;
+const ID_REF_ATTRS = ['for', 'form', 'list', 'aria-labelledby', 'aria-describedby', 'aria-controls'];
+/**
+ * Dialog markup reuses short ids (f, n, a…) that the page underneath may also use.
+ * Duplicate ids make `form="f"` and `<label for>` resolve to the page's element, so
+ * Submit silently did nothing. Prefix every id inside the dialog, rewrite the
+ * references to match, and keep the original name in data-id for byId().
+ */
+function scopeIds(root, prefix) {
+  const renamed = new Set();
+  for (const el of root.querySelectorAll('[id]')) { renamed.add(el.id); el.dataset.id = el.id; el.id = prefix + el.id; }
+  for (const attr of ID_REF_ATTRS) {
+    for (const el of root.querySelectorAll(`[${attr}]`)) {
+      el.setAttribute(attr, el.getAttribute(attr).split(/\s+/).map(token => (renamed.has(token) ? prefix + token : token)).join(' '));
+    }
+  }
+}
+/** Find an element inside a dialog by the id it was written with. */
+export function byId(root, id) { return root.querySelector(`[data-id="${CSS.escape(id)}"]`); }
+
 export function modal({ title, subtitle = '', body, footer = '', wide = false }) {
   closeModal();
   lastFocus = document.activeElement;
@@ -86,14 +107,16 @@ export function modal({ title, subtitle = '', body, footer = '', wide = false })
     <header class="modal-head"><div><h2 id="modal-title">${title}</h2>${subtitle ? html`<p>${subtitle}</p>` : ''}</div>
     <button class="icon-btn" data-close aria-label="Close">×</button></header>
     <div class="modal-body">${body}</div>${footer ? html`<footer class="modal-foot">${footer}</footer>` : ''}</div>`);
+  scopeIds(layer, `m${++modalSeq}-`);
   layer.addEventListener('click', event => { if (event.target === layer || event.target.closest('[data-close]')) closeModal(); });
-  layer.addEventListener('keydown', event => { if (event.key === 'Escape') closeModal(); });
   document.body.append(layer);
+  document.addEventListener('keydown', onModalKey);
   setTimeout(() => (layer.querySelector('input:not([type=hidden]), select, textarea, button.primary') || layer.querySelector('button'))?.focus(), 20);
   return layer.querySelector('.modal');
 }
 export function closeModal() {
   $$('.modal-layer').forEach(node => node.remove());
+  document.removeEventListener('keydown', onModalKey);
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
   lastFocus = null;
 }
